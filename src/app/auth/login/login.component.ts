@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, DestroyRef, inject, OnInit } from '@angular/core';
 import { AbstractControl, FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { debounceTime, of } from 'rxjs';
 
@@ -27,6 +27,9 @@ function emailIsUnique(control: AbstractControl) {
   styleUrl: './login.component.css',
 })
 export class LoginComponent implements OnInit {
+  
+  private destroyRef = inject(DestroyRef);
+
   form = new FormGroup(
     {
       email: new FormControl('', {
@@ -40,12 +43,22 @@ export class LoginComponent implements OnInit {
   );
 
   ngOnInit(): void {
-    this.form.valueChanges.pipe(
+    const savedForm = window.localStorage.getItem('saved-login-form');
+
+    if (savedForm) {
+      const loadedForm = JSON.parse(savedForm);
+      this.form.patchValue({email: loadedForm.email});
+    }
+
+    const subscription = this.form.valueChanges.pipe(
       debounceTime(500)
     )
     .subscribe({
       next: (value) => window.localStorage.setItem('saved-login-form', JSON.stringify({email: value.email}))
     });
+
+    this.destroyRef.onDestroy(() => subscription.unsubscribe())
+
   }
 
   get emailIsInvalid(): boolean {
